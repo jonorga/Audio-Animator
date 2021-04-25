@@ -60,27 +60,66 @@ class waveObj:
 		chunk2_size_en = self.raw_audio_data[40:44]
 		self.chunk2_size = int.from_bytes(chunk2_size_en, byteorder='little') # Chunk 2 size
 
-		self.total_samples = int(self.chunk2_size/self.block_line)
+		
 
 
-	def sample_raw(self, index_pos):
+	def sample_raw(self, index_pos): # Index position in the list of samples
 		bit_depth = int(self.block_line/self.num_of_channels)
 		sample_value_en = bytes(bit_depth)
 		index_pos += 44
 		sample_value_en = self.raw_audio_data[index_pos:index_pos+bit_depth]
 		return int.from_bytes(sample_value_en, byteorder='little')
 
-	def sample_RMS(self, index_pos):
+	def sample_RMS(self, index_pos, milliseconds): # Index position in the list of samples
 		counter = index_pos
 		rms_length = 0 # counter to limit calculation to samples in time length
-		samples_in_time = self.sample_rate * 0.3 # total number of samples to be considered (if avail)
+		samples_in_time = self.sample_rate * milliseconds # total number of samples to be considered (if avail)
 		rms_val = 0
 		while counter >= 0 and rms_length < samples_in_time:
 			rms_val += self.sample_raw(counter) ** 2
 			counter -= 1
 			rms_length += 1
-		rms_val /= 300
+		rms_val /= samples_in_time
 		return int(math.sqrt(rms_val))
 		# take square root of RMS value
 
+	def decibel_raw(self, index_pos, milliseconds):
+		return math.log(self.sample_RMS(index_pos, milliseconds)/(2 ** self.bits_per_samples), 10)
 
+	def decibel_RMS_clamped(self, index_pos, milliseconds, min_val, max_val):
+		temp = self.decibel_RMS(index_pos, milliseconds)
+
+	def sample_at_frame(self, frame, frame_rate = 24): # Frame: frame to find sample at, Frame Rate: frame rate of video for reference
+		pos = frame/frame_rate
+		sample = int(pos*self.sample_rate)
+		return sample
+
+	def frame_at_sample(self, sample, frame_rate = 24): # Sample: sample to find frame at, Frame Rate: frame rate of video for reference
+		pos = sample/self.sample_rate
+		frame = int(pos*frame_rate)
+		return frame
+
+	def RMS_at_frame(self, frame, frame_rate = 24): # Frame to find sample RMS value at, Frame Rate: frame rate of video for reference
+		return self.sample_RMS(self.sample_at_frame(frame, frame_rate))
+
+	def length_of_data(self, data_type, frame_rate = 24): # Return the length of data of the specified type (bytes, samples, milliseconds, frames)
+		if data_type == "bytes":
+			return self.chunk2_size
+		elif data_type == "samples":
+			return self.chunk2_size/self.block_line
+		elif data_type == "milliseconds":
+			return (self.chunk2_size/self.block_line)/self.sample_rate
+		elif data_type == "frames":
+			return int(((self.chunk2_size/self.block_line)/self.sample_rate)*frame_rate)
+		else:
+			return "Invalid data type"
+
+
+	def sample_RMS_clamped(self, index_pos, milliseconds, min_val, max_val): # Return RMS value clamped to min/max range.
+		temp = self.sample_RMS(index_pos, milliseconds)/ (2 ** self.bits_per_samples)
+		return round((temp * max_val) + min_val, 4)
+
+	def sample_raw_clamped(self, index_pos, min_val, max_val): # Return RMS value clamped to min/max range.
+		temp = self.sample_raw(index_pos)/ (2 ** self.bits_per_samples)
+		return round((temp * max_val) + min_val, 4)
+		

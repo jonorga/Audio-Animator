@@ -7,10 +7,9 @@
 # (3) Use header info to loop read samples - Complete
 # (4) Collect sample and find the RMS volume - Complete
 ## RMS = Square Root( (sample1^2 + sample2^2 + ... + sample300^2) / 300 )
-# (5) Add RMS volume to list for info to be used in animation
-# (6) Add the next sample to the front, once list is at 300, remove the last one from before
-# (7) Adjust RMS value range to 0 to 100 ( new value = RMS value / (highest RMS value/100) )
-# (8) Use loop to set object location on Z axis to new values, set key frame and move forward frames
+# (5) Get total length in frame of Audio file - Complete
+# (6) Clamp range of RMS values based on bit depth to range specified as variable - Complete
+# (7) Animate to relevant keyframes with values from Audio file
 
 
 
@@ -19,7 +18,12 @@ from waveobject import waveObj
 
 
 
-aud_file = waveObj('test.wav')
-print(aud_file.sample_RMS(0))
+aud_file = waveObj('test3.wav')
+min_val = 0
+max_val = 30
 
-
+i = 0
+while i < aud_file.length_of_data("frames"):
+	# The next line prints the Z value at each frame
+	print(aud_file.decibel_raw(aud_file.sample_at_frame(i), 0.001))
+	i += 1
